@@ -1,15 +1,28 @@
+// Character.js - Uppdatera för att hantera insamling av äpplen
 import React, { useState, useEffect } from "react";
 import figureImage from "./assets/figure 1.png";
 
-const Character = ({ groundLevel = 0, platforms = [], speed = 10 }) => {
+const Character = ({
+  groundLevel = 0,
+  platforms = [],
+  speed = 10,
+  jumpHeight = 150,
+  apples = [],
+  onCollectApple,
+  onDropApple,
+}) => {
   const [positionX, setPositionX] = useState(0);
   const [positionY, setPositionY] = useState(groundLevel);
   const [isJumping, setIsJumping] = useState(false);
   const [isFalling, setIsFalling] = useState(false);
   const [direction, setDirection] = useState(null);
   const [facingRight, setFacingRight] = useState(true);
+  const [hasApple, setHasApple] = useState(false);
 
-  // Starta rörelsen
+  const characterWidth = 50;
+  const characterHeight = 100;
+
+  // Hantera tangenttryckningar för att röra karaktären
   const handleKeyDown = (e) => {
     if (e.key === "ArrowRight") {
       setDirection("right");
@@ -19,11 +32,14 @@ const Character = ({ groundLevel = 0, platforms = [], speed = 10 }) => {
       setFacingRight(false);
     } else if (e.key === " " && !isJumping && !isFalling) {
       setIsJumping(true);
-      setPositionY((prev) => prev + 70);
+    } else if (e.key === "e" && hasApple) {
+      // Släpp äpplet
+      onDropApple(positionX, positionY);
+      setHasApple(false);
     }
   };
 
-  // Hantera keyUp
+  // Stoppa karaktärens rörelse när tangenten släpps
   const handleKeyUp = (e) => {
     if (e.key === "ArrowRight" && direction === "right") {
       setDirection(null);
@@ -32,16 +48,12 @@ const Character = ({ groundLevel = 0, platforms = [], speed = 10 }) => {
     }
   };
 
-  // Uppdatera positionen i sidled baserat på riktningen
+  // Uppdatera karaktärens position i sidled
   useEffect(() => {
     const moveInterval = setInterval(() => {
-      if (direction === "right") {
-        const newPositionX = positionX + speed;
-        if (!isObstructed(newPositionX, positionY)) {
-          setPositionX(newPositionX);
-        }
-      } else if (direction === "left") {
-        const newPositionX = positionX - speed;
+      if (direction) {
+        const newPositionX =
+          direction === "right" ? positionX + speed : positionX - speed;
         if (!isObstructed(newPositionX, positionY)) {
           setPositionX(newPositionX);
         }
@@ -51,17 +63,21 @@ const Character = ({ groundLevel = 0, platforms = [], speed = 10 }) => {
     return () => clearInterval(moveInterval);
   }, [direction, speed, positionX, positionY]);
 
-  // Funktion för att kontrollera om karaktären är blockerad i sidled av en plattform
+  // Kontrollera om karaktären är blockerad i sidled av en plattform
   const isObstructed = (newX, y) => {
     return platforms.some((p) => {
       const isAtSameHeight = y > p.y && y <= p.y + 20;
-      const isHittingLeftSide = newX + 50 > p.x && newX < p.x && isAtSameHeight;
+      const isHittingLeftSide =
+        newX + characterWidth > p.x && newX < p.x && isAtSameHeight;
       const isHittingRightSide =
-        newX < p.x + p.width && newX + 50 > p.x + p.width && isAtSameHeight;
+        newX < p.x + p.width &&
+        newX + characterWidth > p.x + p.width &&
+        isAtSameHeight;
       return isHittingLeftSide || isHittingRightSide;
     });
   };
 
+  // Hantera hållningen av tangenttryckningar
   useEffect(() => {
     window.addEventListener("keydown", handleKeyDown);
     window.addEventListener("keyup", handleKeyUp);
@@ -69,12 +85,11 @@ const Character = ({ groundLevel = 0, platforms = [], speed = 10 }) => {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [isJumping, isFalling, direction]);
+  }, [isJumping, isFalling, direction, hasApple]);
 
-  // Hantera hopp
+  // Hantera hoppande av karaktären
   useEffect(() => {
     if (isJumping) {
-      const jumpHeight = 70;
       let currentHeight = 0;
 
       const jumpInterval = setInterval(() => {
@@ -82,15 +97,19 @@ const Character = ({ groundLevel = 0, platforms = [], speed = 10 }) => {
           const newY = prevY + 10;
           currentHeight += 10;
 
+          // Rör karaktären i sidled under hoppet
           setPositionX((prevX) => {
             if (direction === "right") {
-              return prevX + 5;
+              const newPosX = prevX + 5;
+              return isObstructed(newPosX, newY) ? prevX : newPosX;
             } else if (direction === "left") {
-              return prevX - 5;
+              const newPosX = prevX - 5;
+              return isObstructed(newPosX, newY) ? prevX : newPosX;
             }
             return prevX;
           });
 
+          // Kontrollera om vi har nått maxhöjd
           if (currentHeight >= jumpHeight) {
             clearInterval(jumpInterval);
             setIsJumping(false);
@@ -103,23 +122,22 @@ const Character = ({ groundLevel = 0, platforms = [], speed = 10 }) => {
 
       return () => clearInterval(jumpInterval);
     }
-  }, [isJumping, direction]);
+  }, [isJumping, direction, jumpHeight]);
 
-  // Hantera fallet och kollisionskontroll med plattformar
+  // Hantera fallande efter hopp eller när karaktären är i luften
   useEffect(() => {
     if (isFalling) {
       const fallInterval = setInterval(() => {
         setPositionY((prev) => {
-          // Bestäm fallhastigheten beroende på om karaktären rör sig i sidled eller inte
-          const fallSpeed = direction ? 1 : 3; // FallSpeed
+          const fallSpeed = direction ? 2 : 5;
+          const newY = prev - fallSpeed;
 
-          const newY = prev - fallSpeed; // Faller långsamt eller snabbt beroende på situation
-
+          // Kontrollera om karaktären landar på en plattform eller marken
           const platformUnderneath = platforms.find(
             (p) =>
-              positionX + 50 > p.x &&
-              positionX < p.x + p.width &&
-              newY <= p.y + 5 &&
+              positionX + characterWidth / 2 > p.x &&
+              positionX + characterWidth / 2 < p.x + p.width &&
+              newY <= p.y + 20 &&
               newY >= p.y - 5
           );
 
@@ -133,17 +151,17 @@ const Character = ({ groundLevel = 0, platforms = [], speed = 10 }) => {
         });
       }, 20);
     }
-  }, [isFalling, groundLevel, platforms, positionX, direction, isJumping]);
+  }, [isFalling, groundLevel, platforms, positionX, direction]);
 
-  // Kolla om karaktären är på en plattform eller marken
+  // Kontrollera om karaktären är på en plattform eller inte
   useEffect(() => {
     const checkIfOnPlatform = () => {
       const onPlatform = platforms.some(
         (p) =>
-          positionX + 50 > p.x &&
+          positionX + characterWidth > p.x &&
           positionX < p.x + p.width &&
           positionY <= p.y + 5 &&
-          positionY >= p.y - 5 // Inte falla igenom plattformar
+          positionY >= p.y - 5
       );
 
       if (!onPlatform && positionY > groundLevel && !isJumping) {
@@ -154,13 +172,30 @@ const Character = ({ groundLevel = 0, platforms = [], speed = 10 }) => {
     checkIfOnPlatform();
   }, [positionX, positionY, platforms, isJumping, isFalling, groundLevel]);
 
+  // Hantera insamling av äpplen
+  useEffect(() => {
+    apples.forEach((apple, index) => {
+      if (
+        !apple.isCollected &&
+        positionX + characterWidth / 2 > apple.x &&
+        positionX + characterWidth / 2 < apple.x + apple.width &&
+        positionY + characterHeight / 2 > apple.y - apple.height &&
+        positionY + characterHeight / 2 < apple.y
+      ) {
+        onCollectApple(index);
+        setHasApple(true);
+      }
+    });
+  }, [positionX, positionY, apples, onCollectApple]);
+
+  // Rendera karaktären
   return (
     <div
       style={{
         position: "absolute",
         left: `${positionX}px`,
         bottom: `${positionY}px`,
-        width: "50px",
+        width: `${characterWidth}px`,
         height: "100px",
         display: "flex",
         alignItems: "center",
@@ -176,9 +211,22 @@ const Character = ({ groundLevel = 0, platforms = [], speed = 10 }) => {
           width: "100%",
           height: "100%",
           objectFit: "contain",
-          transform: facingRight ? "scaleX(1)" : "scaleX(-1)", // Invertera horisontellt beroende på riktning
+          transform: facingRight ? "scaleX(1)" : "scaleX(-1)",
         }}
       />
+      {hasApple && (
+        <div
+          style={{
+            position: "absolute",
+            top: "-30px", // Positionera äpplet ovanför huvudet
+            width: "30px",
+            height: "30px",
+            backgroundColor: "#FF0000",
+            borderRadius: "100%",
+            border: "2px solid black",
+          }}
+        ></div>
+      )}
     </div>
   );
 };
