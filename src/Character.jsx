@@ -1,12 +1,11 @@
-// Character.js - Uppdatera för att hantera insamling av äpplen
 import React, { useState, useEffect } from "react";
 import figureImage from "./assets/figure 1.png";
 
 const Character = ({
   groundLevel = 0,
   platforms = [],
-  speed = 10,
-  jumpHeight = 150,
+  speed = 14,
+  jumpHeight = 190,
   apples = [],
   onCollectApple,
   onDropApple,
@@ -33,7 +32,6 @@ const Character = ({
     } else if (e.key === " " && !isJumping && !isFalling) {
       setIsJumping(true);
     } else if (e.key === "e" && hasApple) {
-      // Släpp äpplet
       onDropApple(positionX, positionY);
       setHasApple(false);
     }
@@ -100,16 +98,15 @@ const Character = ({
           // Rör karaktären i sidled under hoppet
           setPositionX((prevX) => {
             if (direction === "right") {
-              const newPosX = prevX + 5;
+              const newPosX = prevX + 6;
               return isObstructed(newPosX, newY) ? prevX : newPosX;
             } else if (direction === "left") {
-              const newPosX = prevX - 5;
+              const newPosX = prevX - 6;
               return isObstructed(newPosX, newY) ? prevX : newPosX;
             }
             return prevX;
           });
 
-          // Kontrollera om vi har nått maxhöjd
           if (currentHeight >= jumpHeight) {
             clearInterval(jumpInterval);
             setIsJumping(false);
@@ -118,7 +115,7 @@ const Character = ({
 
           return newY;
         });
-      }, 20);
+      }, 10);
 
       return () => clearInterval(jumpInterval);
     }
@@ -170,6 +167,7 @@ const Character = ({
     };
 
     checkIfOnPlatform();
+    checkIfOnPlatform();
   }, [positionX, positionY, platforms, isJumping, isFalling, groundLevel]);
 
   // Hantera insamling av äpplen
@@ -200,9 +198,8 @@ const Character = ({
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        overflow: "hidden",
       }}
-    >
+      >
       <img
         src={figureImage}
         alt="Character"
@@ -218,7 +215,7 @@ const Character = ({
         <div
           style={{
             position: "absolute",
-            top: "-30px", // Positionera äpplet ovanför huvudet
+            top: "-20px",
             width: "30px",
             height: "30px",
             backgroundColor: "#FF0000",
@@ -227,7 +224,9 @@ const Character = ({
           }}
         ></div>
       )}
+      
     </div>
+    
   );
 };
 

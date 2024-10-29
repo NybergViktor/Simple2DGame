@@ -1,10 +1,9 @@
-// Level.js - Nivåkomponenten
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Character from "./character";
 
 const Level = () => {
-  const groundLevel = 0; // Marken ligger på nivå 0
-  const characterGroundLevel = 33; // Karaktärens marknivå
+  const groundLevel = 0;
+  const characterGroundLevel = 33;
 
   // Plattformarna i nivån
   const platforms = [
@@ -23,11 +22,15 @@ const Level = () => {
   const [apples, setApples] = useState([
     { x: 834, y: 510, width: 30, height: 30, isCollected: false },
   ]);
+  const [goals, setGoals] = useState([
+    { x: 50, y: 150, width: 150, height: 100 },
+  ]);
+  const [showWinMessage, setShowWinMessage] = useState(false);
 
   const levelHeight = 700;
   const levelWidth = 1400;
 
-  // Funktion som hanterar när karaktären samlar upp ett äpple
+  // karaktären samlar upp ett äpple
   const handleCollectApple = (appleIndex) => {
     setApples((prevApples) => {
       const newApples = [...prevApples];
@@ -36,7 +39,7 @@ const Level = () => {
     });
   };
 
-  // Funktion som hanterar att äpplet släpps
+  // hanterar att äpplet släpps
   const handleDropApple = (positionX, positionY) => {
     setApples((prevApples) => {
       return prevApples.map((apple, index) => {
@@ -45,12 +48,34 @@ const Level = () => {
             ...apple,
             isCollected: false,
             x: positionX,
-            y: positionY + 100, // Sätt det precis där karaktären är (lägg till lite för höjden)
+            y: positionY + 100,
           };
         }
         return apple;
       });
     });
+  };
+
+  // äpplet är i målområdet
+  useEffect(() => {
+    apples.forEach((apple) => {
+      goals.forEach((goal) => {
+        if (
+          !apple.isCollected &&
+          apple.x > goal.x &&
+          apple.x < goal.x + goal.width &&
+          apple.y > goal.y &&
+          apple.y < goal.y + goal.height
+        ) {
+          setShowWinMessage(true);
+        }
+      });
+    });
+  }, [apples, goals]);
+
+  // hanterar omstart av spelet
+  const handleRestart = () => {
+    window.location.reload();
   };
 
   return (
@@ -59,10 +84,10 @@ const Level = () => {
         position: "relative",
         width: `${levelWidth}px`,
         height: `${levelHeight}px`,
-        backgroundColor: "#87CEEB", // Himmelblå färg
+        backgroundColor: "#87CEEB",
         overflow: "hidden",
         border: "2px solid #000",
-        margin: "0 auto", // Centrera nivån på sidan
+        margin: "0 auto",
       }}
     >
       {/* Marken */}
@@ -72,7 +97,7 @@ const Level = () => {
           bottom: `${groundLevel}px`,
           height: "50px",
           width: "100%",
-          backgroundColor: "#654321", // Brun mark
+          backgroundColor: "#654321",
         }}
       />
 
@@ -86,10 +111,10 @@ const Level = () => {
             bottom: `${platform.y - 20}px`,
             width: `${platform.width}px`,
             height: "40px",
-            backgroundColor: "#228B22", // Grön färg för plattformarna
+            backgroundColor: "#228B22",
             border: "2px solid black",
-            borderRadius: "5px", // Rundade kanter för plattformarna
-            boxShadow: "2px 2px 5px rgba(0, 0, 0, 0.5)", // Lätt skugga för djupkänsla
+            borderRadius: "5px",
+            boxShadow: "2px 2px 5px rgba(0, 0, 0, 0.5)",
           }}
         ></div>
       ))}
@@ -106,14 +131,36 @@ const Level = () => {
                 bottom: `${apple.y - 20}px`,
                 width: `${apple.width}px`,
                 height: `${apple.height}px`,
-                backgroundColor: "#FF0000", // Röd färg för äpplet
+                backgroundColor: "#FF0000",
                 border: "2px solid black",
-                borderRadius: "100%", // Rundade kanter för att göra äpplet runt
-                boxShadow: "2px 2px 5px rgba(0, 0, 0, 0.5)", // Lätt skugga för djupkänsla
+                borderRadius: "100%",
+                boxShadow: "2px 2px 5px rgba(0, 0, 0, 0.5)",
               }}
             ></div>
           )
       )}
+
+      {/* Goals */}
+      {goals.map((goal, index) => (
+        <div
+          key={index}
+          style={{
+            position: "absolute",
+            left: `${goal.x}px`,
+            bottom: `${goal.y - 20}px`,
+            width: `${goal.width}px`,
+            height: `${goal.height}px`,
+            backgroundColor: "transparent",
+            border: "2px solid black",
+            borderRadius: "10px",
+            boxShadow: "2px 2px 5px rgba(0, 0, 0, 0.5)",
+            display: "flex",
+            justifyContent: "center",
+          }}
+        >
+          <p>Place Apple Here!</p>
+        </div>
+      ))}
 
       {/* Karaktären */}
       <Character
@@ -124,6 +171,32 @@ const Level = () => {
         onCollectApple={handleCollectApple}
         onDropApple={handleDropApple}
       />
+
+      {/* Vinnarmeddelande */}
+      {showWinMessage && (
+        <div
+          style={{
+            position: "fixed",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            backgroundColor: "#FFF",
+            padding: "20px",
+            border: "2px solid #000",
+            borderRadius: "10px",
+            textAlign: "center",
+            boxShadow: "2px 2px 10px rgba(0, 0, 0, 0.5)",
+          }}
+        >
+          <p>Du vann! Vill du börja om?</p>
+          <button
+            onClick={handleRestart}
+            style={{ padding: "10px", fontSize: "16px" }}
+          >
+            Ja
+          </button>
+        </div>
+      )}
     </div>
   );
 };
